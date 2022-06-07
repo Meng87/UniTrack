@@ -128,6 +128,9 @@ def eval_seq(opt, dataloader, detector, tracker,
         if save_dir is not None:
             cv2.imwrite(os.path.join(
                 save_dir, '{:05d}.jpg'.format(frame_id)), online_im)
+    print("Showing results")
+    print(results)
+    print("-----------------")
     return frame_id, timer.average_time, timer.calls
 
 
