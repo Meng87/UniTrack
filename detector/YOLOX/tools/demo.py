@@ -11,6 +11,9 @@ import cv2
 
 import torch
 
+parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+os.sys.path.insert(0,parentdir) 
+
 from yolox.data.data_augment import preproc
 from yolox.data.datasets import COCO_CLASSES
 from yolox.exp import get_exp
