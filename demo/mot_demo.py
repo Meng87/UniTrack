@@ -95,6 +95,7 @@ def eval_seq(opt, dataloader, detector, tracker,
     timer = Timer()
     results = []
     for frame_id, (_, img, img0) in enumerate(dataloader):
+        print("type of img0 is", type(img0))
         if frame_id % 20 == 0:
             logger.info('Processing frame {} ({:.2f} fps)'.format(
                 frame_id, 1./max(1e-5, timer.average_time)))
@@ -128,10 +129,7 @@ def eval_seq(opt, dataloader, detector, tracker,
         if save_dir is not None:
             cv2.imwrite(os.path.join(
                 save_dir, '{:05d}.jpg'.format(frame_id)), online_im)
-    print("Showing results")
-    print(results)
-    print("-----------------")
-    return frame_id, timer.average_time, timer.calls
+    return results, frame_id, timer.average_time, timer.calls
 
 
 def main(exp, args):
@@ -161,12 +159,14 @@ def main(exp, args):
     tracker = BoxAssociationTracker(args)
 
     frame_dir = osp.join(result_root, 'frame')
+    bboxes = []
     try:
-        eval_seq(args, dataloader, detector, tracker, result_filename,
+        bboxes, _, _, _ = eval_seq(args, dataloader, detector, tracker, result_filename,
                  save_dir=frame_dir, show_image=False)
     except Exception as e:
         print(e)
 
+    print("Bboxes:", bboxes)
     output_video_path = osp.join(result_root, video_name+'.avi')
     cmd_str = 'ffmpeg -f image2 -i {}/%05d.jpg -c:v copy {}'.format(
             osp.join(result_root, 'frame'), output_video_path)
