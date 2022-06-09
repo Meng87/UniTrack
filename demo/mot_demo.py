@@ -95,7 +95,6 @@ def eval_seq(opt, dataloader, detector, tracker,
     timer = Timer()
     results = []
     for frame_id, (_, img, img0) in enumerate(dataloader):
-        print("type of img0 is", type(img0))
         if frame_id % 20 == 0:
             logger.info('Processing frame {} ({:.2f} fps)'.format(
                 frame_id, 1./max(1e-5, timer.average_time)))
@@ -119,7 +118,7 @@ def eval_seq(opt, dataloader, detector, tracker,
             online_ids.append(tid)
         timer.toc()
         # save results
-        results.append((frame_id + 1, online_tlwhs, online_ids))
+        results.append((frame_id + 1, img0, online_tlwhs, online_ids))
         if show_image or save_dir is not None:
             online_im = vis.plot_tracking(
                     img0, online_tlwhs, online_ids, frame_id=frame_id,
@@ -129,9 +128,12 @@ def eval_seq(opt, dataloader, detector, tracker,
         if save_dir is not None:
             cv2.imwrite(os.path.join(
                 save_dir, '{:05d}.jpg'.format(frame_id)), online_im)
+    print(type(online_targets))
+    print(online_targets)
     return results, frame_id, timer.average_time, timer.calls
 
-
+# def save_bboxes(bboxes):
+    
 def main(exp, args):
     logger.info("Args: {}".format(args))
 
@@ -159,14 +161,15 @@ def main(exp, args):
     tracker = BoxAssociationTracker(args)
 
     frame_dir = osp.join(result_root, 'frame')
-    bboxes = []
+    results = []
     try:
-        bboxes, _, _, _ = eval_seq(args, dataloader, detector, tracker, result_filename,
+        results, _, _, _ = eval_seq(args, dataloader, detector, tracker, result_filename,
                  save_dir=frame_dir, show_image=False)
     except Exception as e:
         print(e)
-
-    print("Bboxes:", bboxes)
+    print("printing results...")
+    print(results[0])
+    # D = save_bboxes(results)
     output_video_path = osp.join(result_root, video_name+'.avi')
     cmd_str = 'ffmpeg -f image2 -i {}/%05d.jpg -c:v copy {}'.format(
             osp.join(result_root, 'frame'), output_video_path)
