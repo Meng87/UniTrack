@@ -17,6 +17,8 @@ import torch
 import numpy as np
 from torchvision.transforms import transforms as T
 
+import json
+
 sys.path[0] = os.getcwd()
 from data.video import LoadVideo
 from utils.meter import Timer
@@ -128,11 +130,33 @@ def eval_seq(opt, dataloader, detector, tracker,
         if save_dir is not None:
             cv2.imwrite(os.path.join(
                 save_dir, '{:05d}.jpg'.format(frame_id)), online_im)
-    print(type(online_targets))
-    print(online_targets)
     return results, frame_id, timer.average_time, timer.calls
 
-# def save_bboxes(bboxes):
+def save_bboxes(frames):
+    D = dict()
+    for i in range(len(frames)):
+        _, img_np, bboxes, person_ids = frames[i]
+        # for each person appearing in the frame
+        for j in range(len(person_ids)):
+            id = person_ids[j]
+            segments = D.get(id)
+            if (segments == None): D[id] = [None for k in range(len(frames))]
+
+            # get corr bounding box
+            box = bboxes[j]
+
+            # calculate cropped image
+            lx, ly, w, h = box[0], box[1], box[2], box[3]
+            colStart, colEnd = int(lx), int(lx + w)
+            rowStart, rowEnd = int(ly), int(ly + h)
+            # print(rowStart, rowEnd, colStart, colEnd)
+            img_cropped = img_np[rowStart:rowEnd, colStart:colEnd]
+            img_cropped = img_cropped.tolist()
+            D[id][i] = img_cropped
+
+    with open("bboxes.json", "w") as f:
+        json.dump(D, f)
+    return D
     
 def main(exp, args):
     logger.info("Args: {}".format(args))
@@ -167,9 +191,7 @@ def main(exp, args):
                  save_dir=frame_dir, show_image=False)
     except Exception as e:
         print(e)
-    print("printing results...")
-    print(results[0])
-    # D = save_bboxes(results)
+    save_bboxes(results)
     output_video_path = osp.join(result_root, video_name+'.avi')
     cmd_str = 'ffmpeg -f image2 -i {}/%05d.jpg -c:v copy {}'.format(
             osp.join(result_root, 'frame'), output_video_path)
