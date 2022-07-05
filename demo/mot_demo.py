@@ -132,7 +132,7 @@ def eval_seq(opt, dataloader, detector, tracker,
                 save_dir, '{:05d}.jpg'.format(frame_id)), online_im)
     return results, frame_id, timer.average_time, timer.calls
 
-def save_bboxes(frames, save_dir=None):
+def save_bboxes(frames, save_dir=None, ppl_thres):
     D = dict()
     num_appearances = dict()
     num_frames = len(frames)
@@ -160,7 +160,7 @@ def save_bboxes(frames, save_dir=None):
             num_appearances[id] += 1
     num_irrel_ppl = 0
     for person_id in num_appearances:
-        if (num_appearances[person_id]/num_frames < 0.5):
+        if (num_appearances[person_id]/num_frames < ppl_thres):
             num_irrel_ppl += 1
     prop_irrel_ppl = 0
     if (len(num_appearances) != 0):
@@ -170,7 +170,7 @@ def save_bboxes(frames, save_dir=None):
             json.dump(D, f)
     return D, prop_irrel_ppl
 
-def run_model(exp, args, video_path):
+def run_model(exp, args, video_path, ppl_thres=0.5):
     # Data, I/O
     dataloader = LoadVideo(video_path, args.tsize)
     video_name = osp.basename(video_path).split('.')[0]
@@ -201,7 +201,7 @@ def run_model(exp, args, video_path):
                  save_dir=None, show_image=False) # frame_dir
     except Exception as e:
         print(e)
-    _, prop_irrel_ppl = save_bboxes(results, save_dir=None)
+    _, prop_irrel_ppl = save_bboxes(results, save_dir=None, ppl_thres)
     return prop_irrel_ppl
 
     # Save full video
@@ -217,10 +217,11 @@ def main(exp, args):
         for filename in os.listdir(args.path):
             video_file = os.path.join(args.path, filename)
             if os.path.isfile(video_file):
-                prop_irrel_ppl = run_model(exp, args, video_file)
-                if prop_irrel_ppl > 0.1:
+                prop_irrel_ppl = run_model(exp, args, video_file, ppl_thres=0.2)
+                video_thres = 0.5
+                if prop_irrel_ppl > video_thres:
                     with open(os.path.join(args.output_root, 'stats.txt'), 'a') as f:
-                        f.write(f"{video_file}\t{prop_irrel_ppl}\n")
+                        f.write(f"{video_file}\t{prop_irrel_ppl*100}\n")
     else:
         # single video
         pass
