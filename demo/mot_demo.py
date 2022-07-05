@@ -132,15 +132,19 @@ def eval_seq(opt, dataloader, detector, tracker,
                 save_dir, '{:05d}.jpg'.format(frame_id)), online_im)
     return results, frame_id, timer.average_time, timer.calls
 
-def save_bboxes(frames):
+def save_bboxes(frames, save_dir=None):
     D = dict()
-    for i in range(len(frames)):
+    num_appearances = dict()
+    num_frames = len(frames)
+    for i in range(num_frames):
         _, img_np, bboxes, person_ids = frames[i]
         # for each person appearing in the frame
         for j in range(len(person_ids)):
             id = person_ids[j]
             segments = D.get(id)
-            if (segments == None): D[id] = [None for k in range(len(frames))]
+            if (segments == None):
+                D[id] = [None for k in range(len(frames))]
+                num_appearances[id] = 0
 
             # get corr bounding box
             box = bboxes[j]
@@ -149,21 +153,27 @@ def save_bboxes(frames):
             lx, ly, w, h = box[0], box[1], box[2], box[3]
             colStart, colEnd = int(lx), int(lx + w)
             rowStart, rowEnd = int(ly), int(ly + h)
-            # print(rowStart, rowEnd, colStart, colEnd)
+            
             img_cropped = img_np[rowStart:rowEnd, colStart:colEnd]
             img_cropped = img_cropped.tolist()
             D[id][i] = img_cropped
+            num_appearances[id] += 1
+    num_irrel_ppl = 0
+    for person_id in num_appearances:
+        if (num_appearances[person_id]/num_frames < 0.5):
+            num_irrel_ppl += 1
+    prop_irrel_ppl = 0
+    if (len(num_appearances) != 0):
+        prop_irrel_ppl = num_irrel_ppl/len(num_appearances)
+    if save_dir is not None:
+        with open(os.path.join(save_dir, 'bboxes.json'), 'w') as f:
+            json.dump(D, f)
+    return D, prop_irrel_ppl
 
-    with open("bboxes.json", "w") as f:
-        json.dump(D, f)
-    return D
-    
-def main(exp, args):
-    logger.info("Args: {}".format(args))
-
+def run_model(exp, args, video_path):
     # Data, I/O
-    dataloader = LoadVideo(args.path, args.tsize)
-    video_name = osp.basename(args.path).split('.')[0]
+    dataloader = LoadVideo(video_path, args.tsize)
+    video_name = osp.basename(video_path).split('.')[0]
     result_root = osp.join(args.output_root, video_name)
     result_filename = os.path.join(result_root, 'results.txt')
     args.frame_rate = dataloader.frame_rate
@@ -188,15 +198,32 @@ def main(exp, args):
     results = []
     try:
         results, _, _, _ = eval_seq(args, dataloader, detector, tracker, result_filename,
-                 save_dir=frame_dir, show_image=False)
+                 save_dir=None, show_image=False) # frame_dir
     except Exception as e:
         print(e)
-    save_bboxes(results)
-    output_video_path = osp.join(result_root, video_name+'.avi')
-    cmd_str = 'ffmpeg -f image2 -i {}/%05d.jpg -c:v copy {}'.format(
-            osp.join(result_root, 'frame'), output_video_path)
-    os.system(cmd_str)
+    _, prop_irrel_ppl = save_bboxes(results, save_dir=None)
+    return prop_irrel_ppl
 
+    # Save full video
+    # output_video_path = osp.join(result_root, video_name+'.avi')
+    # cmd_str = 'ffmpeg -f image2 -i {}/%05d.jpg -c:v copy {}'.format(
+    #         osp.join(result_root, 'frame'), output_video_path)
+    # os.system(cmd_str)
+
+def main(exp, args):
+    logger.info("Args: {}".format(args))
+    if (os.path.isdir(args.path)):
+        # iterate through all videos in directory
+        for filename in os.listdir(args.path):
+            video_file = os.path.join(args.path, filename)
+            if os.path.isfile(video_file):
+                prop_irrel_ppl = run_model(exp, args, video_file)
+                if prop_irrel_ppl > 0.1:
+                    with open(os.path.join(args.output_root, 'stats.txt'), 'a') as f:
+                        f.write(f"{video_file}\t{prop_irrel_ppl}\n")
+    else:
+        # single video
+        pass
 
 if __name__ == '__main__':
     args = make_parser().parse_args()
