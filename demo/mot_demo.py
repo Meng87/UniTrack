@@ -132,7 +132,7 @@ def eval_seq(opt, dataloader, detector, tracker,
                 save_dir, '{:05d}.jpg'.format(frame_id)), online_im)
     return results, frame_id, timer.average_time, timer.calls
 
-def save_bboxes(frames, save_dir=None, ppl_thres):
+def save_bboxes(frames, video_name, save_dir=None, ppl_thres=0.5):
     D = dict()
     num_appearances = dict()
     num_frames = len(frames)
@@ -166,7 +166,7 @@ def save_bboxes(frames, save_dir=None, ppl_thres):
     if (len(num_appearances) != 0):
         prop_irrel_ppl = num_irrel_ppl/len(num_appearances)
     if save_dir is not None:
-        with open(os.path.join(save_dir, 'bboxes.json'), 'w') as f:
+        with open(os.path.join(save_dir, f'{video_name}.json'), 'w') as f:
             json.dump(D, f)
     return D, prop_irrel_ppl
 
@@ -201,7 +201,7 @@ def run_model(exp, args, video_path, ppl_thres=0.5):
                  save_dir=None, show_image=False) # frame_dir
     except Exception as e:
         print(e)
-    _, prop_irrel_ppl = save_bboxes(results, save_dir=None, ppl_thres)
+    _, prop_irrel_ppl = save_bboxes(results, video_name, save_dir=None, ppl_thres=ppl_thres)
     return prop_irrel_ppl
 
     # Save full video
@@ -223,8 +223,7 @@ def main(exp, args):
                     with open(os.path.join(args.output_root, 'stats.txt'), 'a') as f:
                         f.write(f"{video_file}\t{prop_irrel_ppl*100}\n")
     else:
-        # single video
-        pass
+        run_model(exp, args, args.path)
 
 if __name__ == '__main__':
     args = make_parser().parse_args()
