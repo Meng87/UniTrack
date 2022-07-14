@@ -27,6 +27,10 @@ In this demo we run the YOLOX detector and perform MOT for the 80 COCO classes. 
 ```python
 python demo/mot_demo.py --classes cls1 cls2 ... clsN
 ```
+Example command: Running the model on a folder of videos to detect 'person' (class 0) 
+```
+python demo/mot_demo.py --path ./test_videos --classes 0 --save_result --output-root ./results
+```
 where cls1 to clsN represent the indices of classes you would like to detect and track. See [here](https://gist.github.com/AruniRC/7b3dadd004da04c80198557db5da4bda) for the index list. By default all 80 classes are detected and tracked.
     
 **Single-Object Tracking demo for custom videos**
