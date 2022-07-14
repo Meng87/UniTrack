@@ -132,7 +132,7 @@ def eval_seq(opt, dataloader, detector, tracker,
                 save_dir, '{:05d}.jpg'.format(frame_id)), online_im)
     return results, frame_id, timer.average_time, timer.calls
 
-def save_bboxes(frames, video_name, save_dir=None, ppl_thres=0.5):
+def save_bboxes(frames, video_name, save_dir="./results", ppl_thres=0.1):
     D = dict()
     num_appearances = dict()
     num_frames = len(frames)
@@ -158,19 +158,17 @@ def save_bboxes(frames, video_name, save_dir=None, ppl_thres=0.5):
             img_cropped = img_cropped.tolist()
             D[id][i] = img_cropped
             num_appearances[id] += 1
-    num_irrel_ppl = 0
     for person_id in num_appearances:
-        if (num_appearances[person_id]/num_frames < ppl_thres):
-            num_irrel_ppl += 1
-    prop_irrel_ppl = 0
-    if (len(num_appearances) != 0):
-        prop_irrel_ppl = num_irrel_ppl/len(num_appearances)
+        num_appearances[person_id] = num_appearances[person_id]/num_frames
+    # prop_irrel_ppl = 0
+    # if (len(num_appearances) != 0):
+    #     prop_irrel_ppl = num_irrel_ppl/len(num_appearances)
     if save_dir is not None:
         with open(os.path.join(save_dir, f'{video_name}.json'), 'w') as f:
             json.dump(D, f)
-    return D, prop_irrel_ppl
+    return D, num_appearances
 
-def run_model(exp, args, video_path, ppl_thres=0.5):
+def run_model(exp, args, video_path, ppl_thres=0.1):
     # Data, I/O
     dataloader = LoadVideo(video_path, args.tsize)
     video_name = osp.basename(video_path).split('.')[0]
@@ -198,17 +196,17 @@ def run_model(exp, args, video_path, ppl_thres=0.5):
     results = []
     try:
         results, _, _, _ = eval_seq(args, dataloader, detector, tracker, result_filename,
-                 save_dir=None, show_image=False) # frame_dir
+                 save_dir=frame_dir, show_image=False)
     except Exception as e:
         print(e)
-    _, prop_irrel_ppl = save_bboxes(results, video_name, save_dir=None, ppl_thres=ppl_thres)
-    return prop_irrel_ppl
-
+    _, num_appearances = save_bboxes(results, video_name, save_dir=None, ppl_thres=ppl_thres)
+    
     # Save full video
-    # output_video_path = osp.join(result_root, video_name+'.avi')
-    # cmd_str = 'ffmpeg -f image2 -i {}/%05d.jpg -c:v copy {}'.format(
-    #         osp.join(result_root, 'frame'), output_video_path)
-    # os.system(cmd_str)
+    output_video_path = osp.join(result_root, video_name+'.avi')
+    cmd_str = 'ffmpeg -f image2 -i {}/%05d.jpg -c:v copy {}'.format(
+            osp.join(result_root, 'frame'), output_video_path)
+    os.system(cmd_str)
+    return num_appearances
 
 def main(exp, args):
     logger.info("Args: {}".format(args))
@@ -217,11 +215,10 @@ def main(exp, args):
         for filename in os.listdir(args.path):
             video_file = os.path.join(args.path, filename)
             if os.path.isfile(video_file):
-                prop_irrel_ppl = run_model(exp, args, video_file, ppl_thres=0.2)
-                video_thres = 0.5
-                if prop_irrel_ppl > video_thres:
-                    with open(os.path.join(args.output_root, 'stats.txt'), 'a') as f:
-                        f.write(f"{video_file}\t{prop_irrel_ppl*100}\n")
+                num_appearances = run_model(exp, args, video_file, ppl_thres=0.1)
+                with open(os.path.join(args.output_root, 'stats.csv'), 'a') as f:
+                    for person_id in num_appearances:
+                        f.write(f"{video_file},{person_id},{num_appearances[person_id]}\n")
     else:
         run_model(exp, args, args.path)
 
