@@ -3,7 +3,7 @@ A tool that performs uses UniTrack person detection on video data and outputs in
 1) Bounding box coordinates of the location of a given person in a frame of the video
 2) Video frames cropped to show only the detected person.
 
-* For a full description of the how UniTrack works, visit the [UniTrack project page](https://github.com/Zhongdao/UniTrack)
+For a full description of the how UniTrack works, visit the [UniTrack project page](https://github.com/Zhongdao/UniTrack)
 
 # Installation
 Adapted from [docs/INSTALL.md](docs/INSTALL.md)
