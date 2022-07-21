@@ -3,9 +3,10 @@ test/test_tao.py
 tracker/mot/tao.py
 eval/error_log.txt
 config
-test_videos
-results
-results2
+test_videos/
+results/
+results2/
+*.mp4
 
 weights/
 results/
