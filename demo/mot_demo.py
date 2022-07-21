@@ -133,7 +133,8 @@ def eval_seq(opt, dataloader, detector, tracker,
     return results, frame_id, timer.average_time, timer.calls
 
 def save_bboxes(frames, video_name, save_dir="./results", ppl_thres=0.1):
-    D = dict()
+    croppedPersons = dict()
+    bboxCoords = dict()
     num_appearances = dict()
     num_frames = len(frames)
     for i in range(num_frames):
@@ -141,9 +142,10 @@ def save_bboxes(frames, video_name, save_dir="./results", ppl_thres=0.1):
         # for each person appearing in the frame
         for j in range(len(person_ids)):
             id = person_ids[j]
-            segments = D.get(id)
+            segments = croppedPersons.get(id)
             if (segments == None):
-                D[id] = [None for k in range(len(frames))]
+                croppedPersons[id] = [None for k in range(len(frames))]
+                bboxCoords[id] = [None for k in range(len(frames))]
                 num_appearances[id] = 0
 
             # get corr bounding box
@@ -156,17 +158,17 @@ def save_bboxes(frames, video_name, save_dir="./results", ppl_thres=0.1):
             
             img_cropped = img_np[rowStart:rowEnd, colStart:colEnd]
             img_cropped = img_cropped.tolist()
-            D[id][i] = img_cropped
+            croppedPersons[id][i] = img_cropped
+            bboxCoords[id][i] = (lx, ly, w, h)
             num_appearances[id] += 1
     for person_id in num_appearances:
         num_appearances[person_id] = num_appearances[person_id]/num_frames
-    # prop_irrel_ppl = 0
-    # if (len(num_appearances) != 0):
-    #     prop_irrel_ppl = num_irrel_ppl/len(num_appearances)
     if save_dir is not None:
-        with open(os.path.join(save_dir, f'{video_name}.json'), 'w') as f:
-            json.dump(D, f)
-    return D, num_appearances
+        with open(os.path.join(save_dir, f'{video_name}_croppedFrames.json'), 'w') as f:
+            json.dump(croppedPersons, f)
+        with open(os.path.join(save_dir, f'{video_name}_bbox.json'), 'w') as g:
+            json.dump(bboxCoords, g)
+    return croppedPersons, bboxCoords, num_appearances
 
 def run_model(exp, args, video_path, ppl_thres=0.1):
     # Data, I/O
@@ -199,7 +201,7 @@ def run_model(exp, args, video_path, ppl_thres=0.1):
                  save_dir=frame_dir, show_image=False)
     except Exception as e:
         print(e)
-    _, num_appearances = save_bboxes(results, video_name, save_dir=None, ppl_thres=ppl_thres)
+    _, _, num_appearances = save_bboxes(results, video_name, save_dir=result_root, ppl_thres=ppl_thres)
     
     # Save full video
     output_video_path = osp.join(result_root, video_name+'.avi')
