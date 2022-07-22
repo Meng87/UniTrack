@@ -1,8 +1,5 @@
 # Introduction
-A tool that performs uses UniTrack person detection on video data and outputs in .json format:
-1) Bounding box coordinates of the location of a given person in a frame of the video
-2) Video frames cropped to show only the detected person
-3) .csv file containing the proportion of time that each person appears in a video
+A tool that performs uses UniTrack person detection on video data.
 
 For a full description of the how UniTrack works, visit the [UniTrack project page](https://github.com/Zhongdao/UniTrack)
 
@@ -52,8 +49,39 @@ Flag             | Description |
 --classes        | Indices of classes you want to detect and track e.g. "person" class has index 0. See [here](https://gist.github.com/AruniRC/7b3dadd004da04c80198557db5da4bda) for the index list. By default all 80 classes are detected and tracked. Separate multiple indices with spaces. |
 --output-root    | Directory where you want results to be stored |
 
+# Output
+The tool will return 4 outputs:
+## 1. Bounding Box Coordinates
+For each person that appears in the video, the bounding box coordinates for that person will be outputted for each frame of the video in a `.json` file, formatted as follows:
+```
+{
+  <person ID>: [<(x, y, w, h) or None>],
+  ...
+}
+```
+The person ID is a unique integer that identifies the person in the video. The x and y variable denotes the left top coordinates of the bounding box, while w and h denote the width and height of the bounding box respectively.
+
+## 2. Cropped Video Frame
+For each person that appears in the video, the cropped video frame (in numpy array form) that shows only the detected person will be outputted for each frame of the video in a `.json` file.
+```
+{
+  <person ID>: [<numpy.ndarray or None>],
+  ...
+}
+```
+## 3. Proportion of time that each person appears in a video
+The proportion of time that each person appears in a video will be outputted in a `.csv` file containing the following columns
+| Column Name | Description |
+| ----------- | ----------- |
+| video path  | path to the video file |
+| person_id   | an integer that uniquely identifies the person detected |
+| proportion  | proportion of time person appears in the video |
+
+## 4. Video Annotated with Bounding Boxes
+A directory with the same name as the video will be created. It will contain a video annotated with bounding boxes around each detected person as well as a folder named `frames` that contains `.jpg` images of each frame of the annotated video.
+
 # Visualizing the results
-The .csv output, which contains the proportion of time that each person appears in a video, can be visualized by running
+The third `.csv` file output can be visualized by running
 ```
 cd demo
 python viz.py
