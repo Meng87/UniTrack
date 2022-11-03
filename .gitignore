@@ -5,7 +5,7 @@ eval/error_log.txt
 config
 test_videos/
 results/
-results2/
+test_results/
 *.mp4
 
 weights/
