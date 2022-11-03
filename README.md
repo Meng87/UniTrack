@@ -48,6 +48,8 @@ Flag             | Description |
 --path           | Path to directory containing the videos you want to run multi-object detection on. |
 --classes        | Indices of classes you want to detect and track e.g. "person" class has index 0. See [here](https://gist.github.com/AruniRC/7b3dadd004da04c80198557db5da4bda) for the index list. By default all 80 classes are detected and tracked. Separate multiple indices with spaces. |
 --output-root    | Directory where you want results to be stored |
+--save_result    | Saves bounding boxes if set |
+--save_diagnostics| Saves labelled video, frames and statistics for dataset if set |
 
 # Output
 The tool will return 4 outputs:
