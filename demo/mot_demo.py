@@ -41,6 +41,8 @@ def make_parser():
                         help='path to images or video')
     parser.add_argument('--save_result', action='store_true',
                         help='whether to save result')
+    parser.add_argument('--save_diagnostics', action='store_true',
+                        help='whether to save labelled video and data stats')
     parser.add_argument("--nms", default=None, type=float,
                         help="test nms threshold")
     parser.add_argument("--tsize", default=[640, 480], type=int, nargs='+',
@@ -132,7 +134,7 @@ def eval_seq(opt, dataloader, detector, tracker,
                 save_dir, '{:05d}.jpg'.format(frame_id)), online_im)
     return results, frame_id, timer.average_time, timer.calls
 
-def save_bboxes(frames, video_name, save_dir="./results", ppl_thres=0.1):
+def save_bboxes(frames, video_name, save_dir):
     croppedPersons = dict()
     bboxCoords = dict()
     num_appearances = dict()
@@ -163,14 +165,15 @@ def save_bboxes(frames, video_name, save_dir="./results", ppl_thres=0.1):
             num_appearances[id] += 1
     for person_id in num_appearances:
         num_appearances[person_id] = num_appearances[person_id]/num_frames
-    if save_dir is not None:
+    if (save_dir):
+        os.makedirs(save_dir, exist_ok=True)
         with open(os.path.join(save_dir, f'{video_name}_croppedFrames.json'), 'w') as f:
             json.dump(croppedPersons, f)
         with open(os.path.join(save_dir, f'{video_name}_bbox.json'), 'w') as g:
             json.dump(bboxCoords, g)
     return croppedPersons, bboxCoords, num_appearances
 
-def run_model(exp, args, video_path, ppl_thres=0.1):
+def run_model(exp, args, video_path, save_res, save_diag):
     # Data, I/O
     dataloader = LoadVideo(video_path, args.tsize)
     video_name = osp.basename(video_path).split('.')[0]
@@ -194,20 +197,26 @@ def run_model(exp, args, video_path, ppl_thres=0.1):
     # Tracker init
     tracker = BoxAssociationTracker(args)
 
-    frame_dir = osp.join(result_root, 'frame')
+    frame_dir = None
+    if (save_diag): frame_dir = osp.join(result_root, 'frame')
     results = []
     try:
         results, _, _, _ = eval_seq(args, dataloader, detector, tracker, result_filename,
                  save_dir=frame_dir, show_image=False)
     except Exception as e:
         print(e)
-    _, _, num_appearances = save_bboxes(results, video_name, save_dir=result_root, ppl_thres=ppl_thres)
+    bbox_save_dir = None
+    if (save_res): bbox_save_dir = result_root
+    logger.info("Processing bounding boxes.")
+    _, _, num_appearances = save_bboxes(results, video_name, bbox_save_dir)
     
     # Save full video
-    output_video_path = osp.join(result_root, video_name+'.avi')
-    cmd_str = 'ffmpeg -f image2 -i {}/%05d.jpg -c:v copy {}'.format(
-            osp.join(result_root, 'frame'), output_video_path)
-    os.system(cmd_str)
+    if (save_diag):
+        logger.info("Saving labelled video.")
+        output_video_path = osp.join(result_root, video_name+'.avi')
+        cmd_str = 'ffmpeg -f image2 -i {}/%05d.jpg -c:v copy {}'.format(
+                osp.join(result_root, 'frame'), output_video_path)
+        os.system(cmd_str)
     return num_appearances
 
 def main(exp, args):
@@ -217,12 +226,13 @@ def main(exp, args):
         for filename in os.listdir(args.path):
             video_file = os.path.join(args.path, filename)
             if os.path.isfile(video_file):
-                num_appearances = run_model(exp, args, video_file, ppl_thres=0.1)
-                with open(os.path.join(args.output_root, 'stats.csv'), 'a') as f:
-                    for person_id in num_appearances:
-                        f.write(f"{video_file},{person_id},{num_appearances[person_id]}\n")
+                num_appearances = run_model(exp, args, video_file, args.save_result, args.save_diagnostics)
+                if (args.save_diagnostics):
+                    with open(os.path.join(args.output_root, 'stats.csv'), 'a') as f:
+                        for person_id in num_appearances:
+                            f.write(f"{video_file},{person_id},{num_appearances[person_id]}\n")
     else:
-        run_model(exp, args, args.path)
+        run_model(exp, args, args.path, args.save_result, args.save_diagnostics)
 
 if __name__ == '__main__':
     args = make_parser().parse_args()
