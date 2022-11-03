@@ -39,7 +39,7 @@ pip3 install cython onnx cython_bbox==0.1.3 opencv-python numpy
 ```
 
 # Running the multi-object detection model
-Run the model on a directory of videos to detect 'person' (class 0). Place videos Assumes output directory ```results``` has been created beforehand.
+Run the model on a directory of videos to detect 'person' (class 0). Assumes output directory ```results``` has been created beforehand.
 ```
 python demo/mot_demo.py --path ./video_dir --classes 0 --save_result --output-root ./results
 ```
